@@ -4,22 +4,24 @@ import{readdirSync as A,readFileSync as B,mkdirSync as C,writeFileSync as D}from
 const I=process.env.MAKEFUN_INPUT_DIR??"/input",O=process.env.MAKEFUN_OUTPUT_DIR??"/output";
 const U="000112230000000022222221222122202220000000000000011000000000000012000000000000001101";
 const V="011022330000000011111111111111101110000000000000000000000000000010000000000000000010";
+const TRAPS={UNDERFLOW:2,OVERFLOW:3,DIV_ZERO:4,BAD_OPCODE:5,BAD_ADDR:6,CALL_DEPTH:7,EMPTY_RET:8,BAD_PC:9,STEP_LIMIT:10,OUTPUT_LIMIT:11};
+function trap(n){throw TRAPS[n]}
 function R(p,q){
  const s=new Int32Array(256);let a=0,t=0;
  const c=new Int32Array(64);let b=0;
  const m=new Int32Array(256);
  const o=[];let n=p.length,g=0,h=0,k=0;
  try{for(;;){
-  if(g===1e6)throw 10;
-  if(h<0||h>=n)throw 9;
+  if(g===1e6)trap("STEP_LIMIT");
+  if(h<0||h>=n)trap("BAD_PC");
   const x=p[h];let y=0;
   if(x===1)y=1;else if(x===2)y=4;else if(x>=48&&x<=51)y=2;
-  else if(!(x<8||(x>=16&&x<=34)||(x>=48&&x<=52)||(x>=64&&x<=65)||(x>=80&&x<=83)))throw 5;
-  if(h+1+y>n)throw 9;
+  else if(!(x<8||(x>=16&&x<=34)||(x>=48&&x<=52)||(x>=64&&x<=65)||(x>=80&&x<=83)))trap("BAD_OPCODE");
+  if(h+1+y>n)trap("BAD_PC");
   g++;const z=h+1+y;h=z;
   const u=U.charCodeAt(x)-48,v=V.charCodeAt(x)-48;
-  if(a<u)throw 2;
-  if(a-u+v>256)throw 3;
+  if(a<u)trap("UNDERFLOW");
+  if(a-u+v>256)trap("OVERFLOW");
   switch(x){
    case 0:return[o,0];
    case 1:s[a++]=(p[z-1]<<24)>>24;break;
@@ -34,10 +36,10 @@ function R(p,q){
    case 16:case 17:case 18:case 19:case 20:case 21:case 22:case 24:case 25:case 26:case 28:case 29:case 30:case 32:case 33:case 34:{
     const d=s[a-1],e=s[a-2];let r;
     if(x===16)r=(e+d)|0;else if(x===17)r=(e-d)|0;else if(x===18)r=Math.imul(e,d);
-    else if(x===19){if(!d)throw 4;r=e===-2147483648&&d===-1?e:(e/d)|0}
-    else if(x===20){if(!d)throw 4;r=d===-1?0:e%d|0}
-    else if(x===21){if(!d)throw 4;r=((e>>>0)/(d>>>0))|0}
-    else if(x===22){if(!d)throw 4;r=(e>>>0)%(d>>>0)|0}
+    else if(x===19){if(!d)trap("DIV_ZERO");r=e===-2147483648&&d===-1?e:(e/d)|0}
+    else if(x===20){if(!d)trap("DIV_ZERO");r=d===-1?0:e%d|0}
+    else if(x===21){if(!d)trap("DIV_ZERO");r=((e>>>0)/(d>>>0))|0}
+    else if(x===22){if(!d)trap("DIV_ZERO");r=(e>>>0)%(d>>>0)|0}
     else if(x===24)r=e&d;else if(x===25)r=e|d;else if(x===26)r=e^d;
     else if(x===28)r=e<<(d&31);else if(x===29)r=e>>(d&31);else if(x===30)r=(e>>>(d&31))|0;
     else if(x===32)r=e===d?1:0;else if(x===33)r=e<d?1:0;else r=e>>>0<d>>>0?1:0;
@@ -47,12 +49,12 @@ function R(p,q){
     const f=s[--a];
     if((x===49)===(f===0))h=z+((p[z-2]|p[z-1]<<8)<<16>>16);
     break}
-   case 51:if(b===64)throw 7;c[b++]=z;h=p[z-2]|p[z-1]<<8;break;
-   case 52:if(!b)throw 8;h=c[--b];break;
-   case 64:{const f=s[a-1];if(f<0||f>255)throw 6;s[a-1]=m[f];break}
-   case 65:{const f=s[a-1],e=s[a-2];if(f<0||f>255)throw 6;a-=2;m[f]=e;break}
-   case 80:{const f=String(s[a-1]);if(o.length+f.length>65536)throw 11;a--;for(const ch of f)o.push(ch.charCodeAt(0));break}
-   case 81:if(o.length+1>65536)throw 11;o.push(s[--a]&255);break;
+   case 51:if(b===64)trap("CALL_DEPTH");c[b++]=z;h=p[z-2]|p[z-1]<<8;break;
+   case 52:if(!b)trap("EMPTY_RET");h=c[--b];break;
+   case 64:{const f=s[a-1];if(f<0||f>255)trap("BAD_ADDR");s[a-1]=m[f];break}
+   case 65:{const f=s[a-1],e=s[a-2];if(f<0||f>255)trap("BAD_ADDR");a-=2;m[f]=e;break}
+   case 80:{const f=String(s[a-1]);if(o.length+f.length>65536)trap("OUTPUT_LIMIT");a--;for(const ch of f)o.push(ch.charCodeAt(0));break}
+   case 81:if(o.length+1>65536)trap("OUTPUT_LIMIT");o.push(s[--a]&255);break;
    case 82:s[a++]=k<q.length?q[k++]:-1;break;
    case 83:return[o,s[--a]&255];
   }
